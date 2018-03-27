@@ -55,8 +55,8 @@ def get_market_port(mu_vec, cov_mat, mark_vols, mark_rets, rf, stocks):
     Given the efficient frontier volatilities and returns, MARK_VOLS and MARK_RETS, corresponding
     to the x- and y-axis of the Efficient Frontier for a portfolio with expected returns vector
     MU_VEC and covariance matrix COV_MAT, will return the closest portoflio to the market portfolio
-    (aka Tangency Portfolio) given the risk-free rate RF. For labeling, STOCKS should be a list of
-    asset names corresponding to the assets in MU_VEC (and in the same order).
+    (aka Tangency Portfolio) given the *annual* risk-free rate RF. For labeling, STOCKS should be a
+    list of asset names corresponding to the assets in MU_VEC (and in the same order).
     """
     derivatives = []
     for i in range(1, len(mark_rets) - 1):
@@ -89,16 +89,32 @@ def plot_eff_front(mu_vec, cov_mat, stocks):
     plot the capital markets line.
     """
     mu_vec = mu_vec.reshape((len(mu_vec), 1))
+    
+    # For plotting raw return-vol scatter plot
+    return_sd = pd.DataFrame(index = stocks)
+    return_sd['E[r]'] = mu_vec
+    return_sd['vol'] = [np.sqrt(cov_mat[i, i]) for i in range(len(cov_mat))]
+    
+    # Gets y-axis (rets) and x-axis (vols) of efficient frontier
     rets = np.linspace(-2 * np.abs(min(mu_vec)), 2*np.abs(max(mu_vec)), 100)
     vols = [get_vol(opt_weight(r, cov_mat, mu_vec), cov_mat) for r in rets]
     
+    # Gets MVP and Market Portfolio
     MVP = get_MVP(mu_vec, cov_mat, vols, rets, stocks)
     market_port, cap_mkt_slope = get_market_port(mu_vec, cov_mat, vols, rets, RF_RATE, stocks)
     x = np.linspace(0, max(vols), 100)
     cap_mkts_line = [RF_RATE + cap_mkt_slope*x for x in x]
     
+    # Plotting
+    return_sd.plot.scatter(x='vol', y='E[r]')
+    
     plt.plot(vols, rets)
     plt.plot(x, cap_mkts_line)
     plt.xlim(xmin=0)
+    
+    for stock in stocks:
+        plt.annotate(stock, xy=(return_sd.loc[stock, 'vol'], return_sd.loc[stock, 'E[r]']))
+    
+    plt.show()
     
     return MVP, market_port
